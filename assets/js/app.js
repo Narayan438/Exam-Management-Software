@@ -107,67 +107,194 @@ function render(){
 /* ---------------- DASHBOARD ---------------- */
 function renderDashboard(c){
   const totalStudents = data.students.length;
-  const totalClasses = data.classes.length;
   const totalStaff = data.staff.length;
-  const totalTeachers = data.staff.filter(s=>s.designation==='Teacher').length;
-  const boys = data.students.filter(s=>s.gender==='Male').length;
-  const girls = data.students.filter(s=>s.gender==='Female').length;
+  const totalUsers = data.users.length;
+  const activeUsers = data.users.filter(user => user.active !== false).length;
+  const presentToday = data.students.filter(student => student.attendanceToday === 'Present').length;
+  const absentToday = data.students.filter(student => student.attendanceToday === 'Absent').length;
 
-  const grid = document.createElement('div');
-  grid.className = 'stat-grid';
-  grid.innerHTML = `
-    <div class="stat-card"><div class="num">${totalStudents}</div><div class="label">Total Students</div></div>
-    <div class="stat-card"><div class="num">${totalClasses}</div><div class="label">Classes</div></div>
-    <div class="stat-card"><div class="num">${totalStaff}</div><div class="label">Total Staff</div></div>
-    <div class="stat-card"><div class="num">${totalTeachers}</div><div class="label">Teachers</div></div>
-    <div class="stat-card boys"><div class="num">${boys}</div><div class="label">Boys</div></div>
-    <div class="stat-card girls"><div class="num">${girls}</div><div class="label">Girls</div></div>
-  `;
-  c.appendChild(grid);
+  c.innerHTML = `
+    <div class="dashboard-layout">
+      <section class="dashboard-main">
+        <div class="overview-grid">
+          ${dashboardStatCard('students', totalStudents, 'Student', 'blue')}
+          ${dashboardStatCard('present', presentToday, 'Total Present', 'yellow')}
+          ${dashboardStatCard('absent', absentToday, 'Total Absent', 'pink')}
+          ${dashboardStatCard('staff', totalStaff, 'Staff', 'green')}
+          ${dashboardStatCard('active', activeUsers, 'Active', 'mint')}
+          ${dashboardStatCard('user', totalUsers, 'User', 'sky')}
+        </div>
 
-  const box = document.createElement('div');
-  box.className = 'panel-box';
-  box.innerHTML = `<h3>Class-wise Enrolment</h3><div class="hint">Boys vs. girls per class.</div>
-    <div class="legend"><span><i style="background:var(--boy)"></i>Boys</span><span><i style="background:var(--girl)"></i>Girls</span></div>
-    <div class="chart-wrap" id="chartWrap"></div>`;
-  c.appendChild(box);
+        <div class="distribution-card">
+          <div class="distribution-heading">
+            <h3>Student Distribution by Class</h3>
+            <p>Click on bars to view detailed section breakdown</p>
+          </div>
+          <div class="dashboard-chart" id="chartWrap"></div>
+        </div>
+      </section>
+
+      <aside class="dashboard-side">
+        <section class="birthday-card">
+          <div class="birthday-header">
+            <h3>Birthday</h3>
+            <div class="wish-controls">
+              <input id="birthdayWish" type="text" aria-label="Birthday wish">
+              <button type="button" id="wishBtn">▣&nbsp; Wish</button>
+            </div>
+          </div>
+          <div class="birthday-tabs">
+            <button class="active" data-birthday-tab="students">♧ Students</button>
+            <button data-birthday-tab="staff">▣ Staff</button>
+          </div>
+          <div class="birthday-list" id="birthdayList"></div>
+        </section>
+        <section class="calendar-card" id="dashboardCalendar"></section>
+      </aside>
+    </div>`;
+
   drawBarChart(document.getElementById('chartWrap'));
+  renderBirthdayList('students');
+
+  c.querySelectorAll('[data-birthday-tab]').forEach(button => {
+    button.addEventListener('click', () => {
+      c.querySelectorAll('[data-birthday-tab]').forEach(tab => tab.classList.remove('active'));
+      button.classList.add('active');
+      renderBirthdayList(button.dataset.birthdayTab);
+    });
+  });
+
+  document.getElementById('wishBtn').addEventListener('click', () => {
+    const message = document.getElementById('birthdayWish').value.trim();
+    if(message) alert('Birthday wish ready: ' + message);
+  });
+
+  renderDashboardCalendar(document.getElementById('dashboardCalendar'));
+}
+
+function dashboardStatCard(icon, number, label, tone){
+  const icons = {
+    students:'<path d="M3 8.5 12 4l9 4.5-9 4.5-9-4.5Z"/><path d="M7 11v5l5 2.5 5-2.5v-5"/><path d="M21 9v6"/>',
+    present:'<circle cx="12" cy="7" r="3"/><path d="M5.5 19c.5-4 2.8-6 6.5-6 1.2 0 2.3.2 3.2.7"/><path d="m16 18 2 2 4-5"/>',
+    absent:'<circle cx="11" cy="7" r="3"/><path d="M4.5 19c.5-4 2.8-6 6.5-6 1.5 0 2.8.3 3.8.9"/><path d="m17 16 5 5m0-5-5 5"/>',
+    staff:'<rect x="3" y="5" width="18" height="13" rx="2"/><circle cx="16" cy="12" r="2.5"/><path d="M12 18c.5-2.2 1.8-3.5 4-3.5s3.5 1.3 4 3.5"/>',
+    active:'<circle cx="11" cy="8" r="3"/><path d="M4.5 20c.5-4.2 2.8-6.5 6.5-6.5"/><circle cx="18" cy="17" r="4"/><path d="M18 15v4m-2-2h4"/>',
+    user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-5 3.5-7 8-7s7.2 2 8 7"/>'
+  };
+  return `<article class="overview-card ${tone}">
+    <div class="overview-copy"><strong>${number}</strong><span>${label}</span></div>
+    <div class="overview-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${icons[icon]}</svg></div>
+  </article>`;
+}
+
+function renderBirthdayList(type){
+  const host = document.getElementById('birthdayList');
+  if(!host) return;
+  const today = new Date();
+  const source = type === 'staff' ? data.staff : data.students;
+  const birthdays = source.filter(person => {
+    const raw = person.dob || person.dateOfBirth;
+    if(!raw) return false;
+    const parts = String(raw).split(/[-/]/).map(Number);
+    return parts.length >= 3 && parts[1] === today.getMonth()+1 && parts[2] === today.getDate();
+  });
+
+  if(!birthdays.length){
+    host.innerHTML = '<div class="birthday-empty">No birthdays today.</div>';
+    return;
+  }
+
+  host.innerHTML = '<div class="birthday-today">Today</div>' + birthdays.map((person,index) => {
+    const cl = data.classes.find(item => item.id === person.classId);
+    const meta = type === 'staff'
+      ? (person.designation || 'Staff')
+      : [cl ? cl.name : '', person.roll ? 'Roll ' + person.roll : ''].filter(Boolean).join(' · ');
+    return `<div class="birthday-person">
+      <div class="birthday-avatar tone-${index%3}">${escapeHtml((person.name || '?').charAt(0).toUpperCase())}<span>♨</span></div>
+      <div><strong>${escapeHtml(person.name || '—')}</strong><small>${escapeHtml(meta || 'Student')}</small></div>
+    </div>`;
+  }).join('');
+}
+
+function renderDashboardCalendar(host){
+  let viewDate = new Date();
+  viewDate.setDate(1);
+
+  const paint = () => {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const today = new Date();
+    const firstDay = new Date(year, month, 1).getDay();
+    const days = new Date(year, month + 1, 0).getDate();
+    const previousDays = new Date(year, month, 0).getDate();
+    const monthName = viewDate.toLocaleString('en-US', {month:'long'});
+    let cells = '';
+
+    for(let index=0; index<42; index++){
+      let day;
+      let muted = false;
+      if(index < firstDay){ day = previousDays-firstDay+index+1; muted=true; }
+      else if(index >= firstDay+days){ day=index-firstDay-days+1; muted=true; }
+      else day=index-firstDay+1;
+      const isToday = !muted && day===today.getDate() && month===today.getMonth() && year===today.getFullYear();
+      const sunday = index%7===0;
+      cells += `<button class="calendar-day ${muted?'muted':''} ${isToday?'today':''} ${sunday?'holiday':''}">
+        <span>${day}</span><small>${String((day+14)%32+1).padStart(2,'0')}</small>
+      </button>`;
+    }
+
+    host.innerHTML = `
+      <div class="calendar-toolbar">
+        <div><strong>${monthName}</strong><span>${year}</span></div>
+        <div class="calendar-actions">
+          <button data-cal="prev" aria-label="Previous month">‹</button>
+          <button data-cal="today" aria-label="Current month">⌖</button>
+          <button data-cal="next" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="calendar-week"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+      <div class="calendar-grid">${cells}</div>`;
+
+    host.querySelector('[data-cal="prev"]').onclick=()=>{ viewDate.setMonth(viewDate.getMonth()-1); paint(); };
+    host.querySelector('[data-cal="next"]').onclick=()=>{ viewDate.setMonth(viewDate.getMonth()+1); paint(); };
+    host.querySelector('[data-cal="today"]').onclick=()=>{ viewDate=new Date(); viewDate.setDate(1); paint(); };
+  };
+  paint();
 }
 
 function drawBarChart(container){
   const classesSorted = [...data.classes].sort((a,b)=>a.order-b.order);
-  const rows = classesSorted.map(cl=>{
-    const stus = data.students.filter(s=>s.classId===cl.id);
-    return { name: cl.name, boys: stus.filter(s=>s.gender==='Male').length, girls: stus.filter(s=>s.gender==='Female').length };
-  });
-  if(!rows.length || rows.every(r=>r.boys===0 && r.girls===0)){
-    container.innerHTML = '<div class="empty-msg">No student data yet — add students to see the chart.</div>';
-    return;
-  }
-  const maxVal = Math.max(1, ...rows.map(r=>Math.max(r.boys,r.girls)));
-  const barW = 14, gap = 6, groupW = barW*2+gap, groupGap = 26;
-  const chartH = 180, padTop = 10, padBottom = 34, padLeft = 36;
-  const width = padLeft + rows.length*(groupW+groupGap) + 20;
-  const height = padTop+chartH+padBottom;
+  const rows = classesSorted.map(cl=>({
+    name:cl.name,
+    total:data.students.filter(student=>student.classId===cl.id).length
+  }));
+  const maxVal = Math.max(10, ...rows.map(row=>row.total));
+  const chartMax = Math.ceil(maxVal/10)*10;
+  const chartH=300, top=24, bottom=112, left=54;
+  const barW=34, gap=26;
+  const width=Math.max(720,left+rows.length*(barW+gap)+30);
+  const height=top+chartH+bottom;
+  const colors=['#2176e8','#28bddd','#7350e9','#148c59','#08a4ed','#f1ad00'];
 
-  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace">`;
-  // gridlines
+  let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Student distribution chart">`;
   for(let i=0;i<=4;i++){
-    const y = padTop + chartH - (chartH*i/4);
-    const val = Math.round(maxVal*i/4);
-    svg += `<line x1="${padLeft}" y1="${y}" x2="${width-10}" y2="${y}" stroke="#ddd3b6" stroke-width="1"/>`;
-    svg += `<text x="${padLeft-6}" y="${y+3}" font-size="9" fill="#55628a" text-anchor="end">${val}</text>`;
+    const y=top+chartH-(chartH*i/4);
+    const value=Math.round(chartMax*i/4);
+    svg+=`<line x1="${left}" y1="${y}" x2="${width-12}" y2="${y}" stroke="#e6ebf2"/><text x="${left-12}" y="${y+5}" text-anchor="end" class="axis-text">${value}</text>`;
   }
-  rows.forEach((r,i)=>{
-    const gx = padLeft + i*(groupW+groupGap);
-    const bh = (r.boys/maxVal)*chartH;
-    const gh = (r.girls/maxVal)*chartH;
-    svg += `<rect x="${gx}" y="${padTop+chartH-bh}" width="${barW}" height="${bh}" fill="#2b4c7e" rx="2"/>`;
-    svg += `<rect x="${gx+barW+gap}" y="${padTop+chartH-gh}" width="${barW}" height="${gh}" fill="#b23a34" rx="2"/>`;
-    svg += `<text x="${gx+groupW/2}" y="${padTop+chartH+16}" font-size="9.5" fill="#1B2A4A" text-anchor="middle">${escapeHtml(r.name).replace('Class ','C.')}</text>`;
+  svg+=`<text transform="translate(18 ${top+chartH/2}) rotate(-90)" text-anchor="middle" class="axis-title">Total Student</text>`;
+  rows.forEach((row,index)=>{
+    const x=left+18+index*(barW+gap);
+    const barHeight=(row.total/chartMax)*chartH;
+    const y=top+chartH-barHeight;
+    svg+=`<g class="chart-bar" data-class="${escapeHtml(row.name)}"><title>${escapeHtml(row.name)}: ${row.total} students</title>
+      <rect x="${x}" y="${y}" width="${barW}" height="${barHeight}" rx="6" fill="${colors[index%colors.length]}"/>
+      <text x="${x+barW/2}" y="${Math.max(top+15,y-7)}" text-anchor="middle" class="bar-value">${row.total}</text>
+      <text transform="translate(${x+barW/2} ${top+chartH+20}) rotate(-43)" text-anchor="end" class="class-label">${escapeHtml(row.name)}</text>
+    </g>`;
   });
-  svg += `</svg>`;
-  container.innerHTML = svg;
+  svg+='</svg>';
+  container.innerHTML=svg;
 }
 
 /* ---------------- CLASSES ---------------- */
