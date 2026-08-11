@@ -115,12 +115,12 @@ function render(){
 
 /* ---------------- DASHBOARD ---------------- */
 function renderDashboard(c){
-  const totalStudents = data.students.length;
+  const totalStudents = data.students.filter(student => student.status !== 'inactive').length;
   const totalStaff = data.staff.length;
   const totalUsers = data.users.length;
   const activeUsers = data.users.filter(user => user.active !== false).length;
-  const presentToday = data.students.filter(student => student.attendanceToday === 'Present').length;
-  const absentToday = data.students.filter(student => student.attendanceToday === 'Absent').length;
+  const presentToday = data.students.filter(student => student.status !== 'inactive' && student.attendanceToday === 'Present').length;
+  const absentToday = data.students.filter(student => student.status !== 'inactive' && student.attendanceToday === 'Absent').length;
 
   c.innerHTML = `
     <div class="dashboard-layout">
