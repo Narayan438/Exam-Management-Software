@@ -326,3 +326,42 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 .table-scroll{overflow-x:auto;}.iemis-preview-table{min-width:850px;background:#fff;}.import-status{display:inline-block;padding:3px 7px;border-radius:10px;font-size:10px;font-weight:600;}.import-status.ready{color:#176c4a;background:#dcf6ea}.import-status.duplicate{color:#825d0a;background:#fff1c8}.import-status.error{color:#912d2d;background:#ffe1e1}
 @media(max-width:800px){.student-heading,.iemis-upload,.iemis-import-header{flex-direction:column}.iemis-mapping{grid-template-columns:repeat(2,minmax(140px,1fr))}.iemis-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.iemis-mapping{grid-template-columns:1fr}.iemis-upload-actions{width:100%;flex-wrap:wrap}.iemis-preview-head{align-items:flex-start;flex-direction:column}}
+
+
+/* ---------- STUDENT COLUMN VISIBILITY ---------- */
+.student-table-toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin:4px 0 12px;padding:10px 0;
+}
+.student-table-toolbar>div:first-child{display:flex;flex-direction:column;gap:2px;}
+.student-table-toolbar strong{font-family:'Fraunces',serif;font-size:17px;}
+.student-table-toolbar small{color:var(--ink-soft);font-size:11px;}
+.column-picker{position:relative;}
+.column-picker-menu{
+  position:absolute;right:0;top:calc(100% + 7px);z-index:30;width:290px;max-height:390px;
+  overflow-y:auto;padding:10px;background:#fffdf6;border:1px solid #b9ae8e;border-radius:6px;
+  box-shadow:0 14px 32px rgba(27,42,74,.18);
+}
+.column-picker-menu label{
+  display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:4px;
+  color:var(--ink);font-size:12.5px;cursor:pointer;
+}
+.column-picker-menu label:hover{background:#f1ecdd;}
+.column-picker-menu input{accent-color:var(--ink);}
+.column-picker-actions{
+  position:sticky;bottom:-10px;display:flex;justify-content:flex-end;gap:7px;
+  margin:8px -2px -2px;padding:10px 2px 2px;background:#fffdf6;border-top:1px solid var(--line);
+}
+.column-picker-actions button{
+  padding:6px 9px;border:1px solid var(--line);border-radius:4px;background:#f7f2e5;
+  color:var(--ink);font-size:11.5px;
+}
+.student-table-scroll{max-height:58vh;overflow:auto;}
+.student-table-scroll table{min-width:max-content;}
+.student-table-scroll thead{position:sticky;top:0;z-index:2;background:var(--card);}
+.student-table-scroll th,.student-table-scroll td{white-space:nowrap;}
+@media(max-width:600px){
+  .student-table-toolbar{align-items:stretch;flex-direction:column;}
+  .column-picker .ghost{width:100%;}
+  .column-picker-menu{left:0;right:auto;width:min(290px,calc(100vw - 56px));}
+}
