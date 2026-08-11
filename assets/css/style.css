@@ -286,3 +286,22 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
   .overview-grid{grid-template-columns:1fr;}
   .overview-card{min-height:92px;}
 }
+
+/* ---------- IEMIS IMPORT ---------- */
+.student-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px;}
+.student-heading h3,.student-heading .hint{margin:0;}
+.student-heading .hint{margin-top:4px;}
+#openIemis{white-space:nowrap;background:#1769aa;}
+.iemis-importer{border:1px solid #bfd6e8;background:#f8fcff;border-radius:8px;margin:8px 0 22px;overflow:hidden;}
+.iemis-import-header,.iemis-upload{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:18px 20px;border-bottom:1px solid #cfe2ef;}
+.iemis-import-header{background:#eaf5fc;}.iemis-import-header h3{margin:0 0 4px;font-family:'IBM Plex Sans',sans-serif;}.iemis-import-header p{margin:0;color:#52687b;font-size:12px;}
+.iemis-upload{align-items:center;}.iemis-upload strong,.iemis-upload small{display:block;}.iemis-upload small{margin-top:4px;color:var(--ink-soft);font-size:11px;}
+.iemis-upload-actions{display:flex;gap:10px;align-items:center;}.file-button{display:inline-flex;align-items:center;cursor:pointer;}.file-button input{display:none;}
+.iemis-placeholder{padding:38px 20px;text-align:center;color:#718296;font-size:13px;}.iemis-step{padding:18px 20px;border-bottom:1px solid #dce8f0;}
+.iemis-step-title{display:flex;justify-content:space-between;gap:12px;margin-bottom:13px;}.iemis-step-title span{font-size:11px;color:var(--ink-soft);}
+.iemis-mapping{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:11px;}.iemis-mapping label span{display:block;font-size:10px;text-transform:uppercase;color:#52687b;margin-bottom:4px;}.iemis-mapping select{width:100%;padding:8px;border:1px solid #b9cbd8;border-radius:4px;background:white;}
+.iemis-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 20px;background:#fff;}.iemis-summary>span{padding:12px;border-left:4px solid #5088b8;background:#f4f8fb;font:600 22px 'IBM Plex Mono',monospace;}.iemis-summary small{display:block;font:11px 'IBM Plex Sans',sans-serif;color:#617184;margin-top:3px;}.iemis-summary .ready{border-color:#259565}.iemis-summary .duplicate{border-color:#d49a1f}.iemis-summary .invalid{border-color:#bd3c3c}
+.iemis-preview-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-top:1px solid #dce8f0;}.iemis-preview-head strong,.iemis-preview-head small{display:block;}.iemis-preview-head small{margin-top:3px;color:var(--ink-soft);}.iemis-preview-head button:disabled{opacity:.45;cursor:not-allowed;}
+.table-scroll{overflow-x:auto;}.iemis-preview-table{min-width:850px;background:#fff;}.import-status{display:inline-block;padding:3px 7px;border-radius:10px;font-size:10px;font-weight:600;}.import-status.ready{color:#176c4a;background:#dcf6ea}.import-status.duplicate{color:#825d0a;background:#fff1c8}.import-status.error{color:#912d2d;background:#ffe1e1}
+@media(max-width:800px){.student-heading,.iemis-upload,.iemis-import-header{flex-direction:column}.iemis-mapping{grid-template-columns:repeat(2,minmax(140px,1fr))}.iemis-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.iemis-mapping{grid-template-columns:1fr}.iemis-upload-actions{width:100%;flex-wrap:wrap}.iemis-preview-head{align-items:flex-start;flex-direction:column}}
