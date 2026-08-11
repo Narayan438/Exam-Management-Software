@@ -143,37 +143,73 @@
     document.getElementById('stuFilterSection').innerHTML='<option value="__all">All sections</option>'+sections.map(item=>`<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('');
   }
   function renderManualForm(student=null){
-    const host=document.getElementById('studentForm') || document.getElementById('studentModalBody');
+    const host=student ? document.getElementById('studentModalBody') : document.getElementById('studentForm');
     const record=student||{};
     const classId=record.classId || (data.classes[0]&&data.classes[0].id) || '';
-    host.innerHTML=`<form class="student-form" id="studentEditForm">
+    host.innerHTML=`<div class="student-form-heading"><div><h3>${student?'Edit Student Information':'Add Student Manually'}</h3><p>${student?'Update any field below and save the complete record.':'Enter the student information below.'}</p></div>${student?'<button type="button" class="ghost" id="cancelStudentEdit">Back to details</button>':''}</div><form class="student-form student-complete-form" id="studentEditForm">
       <label class="photo-input">${photoMarkup(record,true)}<span>Student Photo</span><input type="file" id="sfPhoto" accept="image/*"></label>
-      <input id="sfStudentId" placeholder="Student Id" value="${escapeHtml(record.studentId||'')}">
-      <input id="sfFullName" required placeholder="Full Name *" value="${escapeHtml(record.fullName||record.name||'')}">
-      <select id="sfGender"><option>Male</option><option ${record.gender==='Female'?'selected':''}>Female</option><option ${record.gender==='Other'?'selected':''}>Other</option></select>
-      <select id="sfClass">${optionsForClass(classId)}</select><select id="sfSection">${sectionOptions(classId,record.sectionId)}</select>
-      <input id="sfDob" placeholder="DOB" value="${escapeHtml(record.dob||'')}"><input id="sfFather" placeholder="Father Name" value="${escapeHtml(record.fatherName||'')}">
-      <input id="sfMother" placeholder="Mother Name" value="${escapeHtml(record.motherName||'')}"><input id="sfGuardian" placeholder="Guardian Name" value="${escapeHtml(record.guardianName||record.guardian||'')}">
-      <input id="sfContact" placeholder="Guardian Contact Number" value="${escapeHtml(record.guardianContact||record.contact||'')}"><input id="sfPermanent" placeholder="Permanent Address" value="${escapeHtml(record.permanentAddress||'')}">
-      <button class="primary" type="submit">${student?'Save changes':'Add student'}</button></form>`;
+      <label><span>S.N</span><input id="sfSn" placeholder="S.N" value="${escapeHtml(record.sn||'')}"></label>
+      <label><span>Student Id</span><input id="sfStudentId" placeholder="Student Id" value="${escapeHtml(record.studentId||'')}"></label>
+      <label><span>Full Name *</span><input id="sfFullName" required placeholder="Full Name" value="${escapeHtml(record.fullName||record.name||'')}"></label>
+      <label><span>Gender</span><select id="sfGender"><option>Male</option><option ${record.gender==='Female'?'selected':''}>Female</option><option ${record.gender==='Other'?'selected':''}>Other</option></select></label>
+      <label><span>Current Class</span><select id="sfClass">${optionsForClass(classId)}</select></label><label><span>Section</span><select id="sfSection">${sectionOptions(classId,record.sectionId)}</select></label>
+      <label><span>Academic Year</span><input id="sfYear" value="${escapeHtml(record.year||record.academicYear||data.settings.academicYear)}"></label>
+      <label><span>DOB</span><input id="sfDob" placeholder="YYYY-MM-DD" value="${escapeHtml(record.dob||'')}"></label>
+      <label><span>Age</span><input id="sfAge" placeholder="Age" value="${escapeHtml(record.age||'')}"></label>
+      <label><span>Father Name</span><input id="sfFather" value="${escapeHtml(record.fatherName||'')}"></label>
+      <label><span>Mother Name</span><input id="sfMother" value="${escapeHtml(record.motherName||'')}"></label>
+      <label><span>Guardian Name</span><input id="sfGuardian" value="${escapeHtml(record.guardianName||record.guardian||'')}"></label>
+      <label><span>Guardian Contact Number</span><input id="sfContact" value="${escapeHtml(record.guardianContact||record.contact||'')}"></label>
+      <label><span>Mother Tongue</span><input id="sfMotherTongue" value="${escapeHtml(record.motherTongue||'')}"></label>
+      <label><span>Disability Type</span><input id="sfDisability" value="${escapeHtml(record.disabilityType||'')}"></label>
+      <label class="form-wide"><span>Permanent Address</span><input id="sfPermanent" value="${escapeHtml(record.permanentAddress||'')}"></label>
+      <label class="form-wide"><span>Temporary Address</span><input id="sfTemporary" value="${escapeHtml(record.temporaryAddress||'')}"></label>
+      <div class="student-form-actions"><button class="primary" type="submit">${student?'Save All Changes':'Add Student'}</button></div></form>`;
     document.getElementById('sfGender').value=record.gender||'Male';
     document.getElementById('sfClass').onchange=event=>{ document.getElementById('sfSection').innerHTML=sectionOptions(event.target.value); };
+    const cancelButton=document.getElementById('cancelStudentEdit');
+    if(cancelButton) cancelButton.onclick=()=>renderStudentProfile(record);
     document.getElementById('studentEditForm').onsubmit=async event=>{
       event.preventDefault();
       const file=document.getElementById('sfPhoto').files[0];
+      const selectedClass=data.classes.find(item=>item.id===document.getElementById('sfClass').value);
+      const selectedSection=data.sections.find(item=>item.id===document.getElementById('sfSection').value);
       const next=studentPayload({...record,
+        sn:document.getElementById('sfSn').value,
         studentId:document.getElementById('sfStudentId').value,fullName:document.getElementById('sfFullName').value,
         gender:document.getElementById('sfGender').value,classId:document.getElementById('sfClass').value,
-        sectionId:document.getElementById('sfSection').value,dob:document.getElementById('sfDob').value,
+        sectionId:document.getElementById('sfSection').value,currentClass:selectedClass?selectedClass.name:'',section:selectedSection?selectedSection.name:'',
+        year:document.getElementById('sfYear').value,dob:document.getElementById('sfDob').value,age:document.getElementById('sfAge').value,
         fatherName:document.getElementById('sfFather').value,motherName:document.getElementById('sfMother').value,
         guardianName:document.getElementById('sfGuardian').value,guardianContact:document.getElementById('sfContact').value,
-        permanentAddress:document.getElementById('sfPermanent').value,photo:file?await fileToDataUrl(file):record.photo
+        motherTongue:document.getElementById('sfMotherTongue').value,disabilityType:document.getElementById('sfDisability').value,
+        permanentAddress:document.getElementById('sfPermanent').value,temporaryAddress:document.getElementById('sfTemporary').value,
+        photo:file?await fileToDataUrl(file):record.photo
       });
       if(next.studentId && data.students.some(item=>item.id!==next.id && text(item.studentId||item.iemisId)===next.studentId)){ alert('Student Id already exists.'); return; }
       const index=data.students.findIndex(item=>item.id===next.id);
       if(index>=0) data.students[index]=next; else data.students.push(next);
-      await saveData(); renderStudents(document.getElementById('content'));
+      await saveData();
+      if(student){ renderStudentProfile(next); } else { renderStudents(document.getElementById('content')); }
     };
+  }
+
+  function profileField(student,key,label,index){
+    return `<div class="profile-field"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(displayValue(student,key,index)||'—')}</span></div>`;
+  }
+  function renderStudentProfile(student){
+    const host=document.getElementById('studentModalBody');
+    if(!host) return;
+    const name=student.fullName||student.name||'Student';
+    const status=student.status==='inactive'?'Inactive / Vault':'Active Student';
+    host.innerHTML=`<section class="student-profile-sheet">
+      <div class="profile-toolbar"><div><span>STUDENT INFORMATION</span><small>Complete student record</small></div><div><button type="button" class="primary" id="profileEdit">Edit</button><button type="button" class="ghost" id="profilePrint">Print</button><button type="button" class="ghost" id="profileBack">Back to List</button></div></div>
+      <div class="profile-identity">${photoMarkup(student,true)}<div><h2>${escapeHtml(name)}</h2><b>${escapeHtml(student.studentId||student.iemisId||'No Student ID')}</b><p>${escapeHtml(status)} · Academic Year ${escapeHtml(student.year||student.academicYear||data.settings.academicYear)}</p></div></div>
+      <div class="profile-details">${IEMIS_COLUMNS.filter(([key])=>!['fullName','studentId'].includes(key)).map(([key,label],index)=>profileField(student,key,label,index)).join('')}</div>
+    </section>`;
+    document.getElementById('profileEdit').onclick=()=>renderManualForm(student);
+    document.getElementById('profilePrint').onclick=()=>window.print();
+    document.getElementById('profileBack').onclick=()=>document.getElementById('studentModal').classList.add('hidden');
   }
   function paintStudentTable(){
     const columns=selectedColumns();
@@ -203,7 +239,7 @@
     }
     const modal=document.getElementById('studentModal'), host=document.getElementById('studentModalBody'); modal.classList.remove('hidden');
     if(action==='edit'){ renderManualForm(student); return; }
-    host.innerHTML=`<div class="student-profile">${photoMarkup(student,true)}<h3>${escapeHtml(student.fullName||student.name)}</h3>${IEMIS_COLUMNS.map(([key,label],index)=>`<p><strong>${escapeHtml(label)}</strong><span>${escapeHtml(displayValue(student,key,index)||'—')}</span></p>`).join('')}</div>`;
+    renderStudentProfile(student);
   }
 
   function findClass(value){ const key=norm(value).replace(/^(class|grade)\s*/, '').replace(/^0+/,''); return data.classes.find(item=>norm(item.name)===norm(value)||norm(item.name).replace(/^(class|grade)\s*/,'').replace(/^0+/,'')===key); }
