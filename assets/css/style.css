@@ -115,3 +115,174 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 .legend{ display:flex; gap:16px; font-size:12px; margin-bottom:10px; }
 .legend span{ display:flex; align-items:center; gap:6px; }
 .legend i{ width:10px;height:10px;border-radius:2px;display:inline-block; }
+/* ---------- REFERENCE DASHBOARD ---------- */
+.content:has(.dashboard-layout){
+  padding:24px;
+  background:#f7f9fc;
+}
+.dashboard-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.75fr) minmax(330px,.95fr);
+  gap:24px;
+  align-items:start;
+  max-width:1600px;
+  margin:0 auto;
+}
+.dashboard-main{min-width:0;}
+.overview-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+  margin-bottom:22px;
+}
+.overview-card{
+  min-height:138px;
+  padding:24px 20px 22px 30px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border:1px solid rgba(20,45,75,.02);
+  box-shadow:0 7px 18px rgba(23,54,87,.025);
+}
+.overview-card.blue,.overview-card.sky{background:#eaf7fd;}
+.overview-card.yellow{background:#fff8dc;}
+.overview-card.pink{background:#fff0f5;}
+.overview-card.green,.overview-card.mint{background:#e9fff5;}
+.overview-copy{display:flex;flex-direction:column;gap:3px;}
+.overview-copy strong{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:34px;
+  line-height:1;
+  color:#101820;
+  letter-spacing:-1px;
+}
+.overview-copy span{font-size:24px;color:#17202a;white-space:nowrap;}
+.overview-icon{
+  width:82px;height:82px;border-radius:13px;
+  display:grid;place-items:center;color:#fff;flex:0 0 auto;
+}
+.overview-card.blue .overview-icon,.overview-card.sky .overview-icon{background:#0aa5e8;}
+.overview-card.yellow .overview-icon{background:#ffc20a;}
+.overview-card.pink .overview-icon{background:#ee3d6e;}
+.overview-card.green .overview-icon,.overview-card.mint .overview-icon{background:#47cc8b;}
+.overview-icon svg{
+  width:49px;height:49px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+}
+.distribution-card,.birthday-card,.calendar-card{
+  background:#fff;border:1px solid #edf1f6;border-radius:10px;
+  box-shadow:0 8px 25px rgba(30,58,88,.035);
+}
+.distribution-card{overflow:hidden;}
+.distribution-heading{padding:18px 22px 10px;}
+.distribution-heading h3{
+  margin:0 0 6px;font-family:'IBM Plex Sans',sans-serif;
+  font-size:27px;letter-spacing:-.5px;color:#161b22;
+}
+.distribution-heading p{margin:0;color:#7b8490;font-size:16px;}
+.dashboard-chart{overflow-x:auto;padding:0 14px 8px;scrollbar-color:#8ec8ee #edf7fd;}
+.dashboard-chart svg{display:block;min-width:100%;}
+.axis-text{font:12px 'IBM Plex Sans',sans-serif;fill:#657386;}
+.axis-title{font:600 14px 'IBM Plex Sans',sans-serif;fill:#324458;}
+.bar-value{
+  font:700 13px 'IBM Plex Sans',sans-serif;fill:#1748d2;
+  paint-order:stroke;stroke:#fff;stroke-width:3px;
+}
+.class-label{font:700 12px 'IBM Plex Sans',sans-serif;fill:#1647c7;}
+.chart-bar{cursor:pointer;transition:opacity .2s;}
+.chart-bar:hover{opacity:.76;}
+.dashboard-side{display:flex;flex-direction:column;gap:22px;min-width:0;}
+.birthday-card{min-height:315px;overflow:hidden;}
+.birthday-header{
+  padding:20px 18px 14px;display:flex;align-items:center;
+  justify-content:space-between;gap:15px;border-bottom:1px solid #edf1f6;
+}
+.birthday-header h3{margin:0;font-size:18px;color:#161b22;}
+.wish-controls{display:flex;gap:10px;flex:1;justify-content:flex-end;}
+.wish-controls input{
+  min-width:0;max-width:250px;width:100%;height:38px;
+  border:1px solid #b9d8e8;background:#fbfdff;border-radius:6px;padding:0 10px;
+}
+.wish-controls button,#wishBtn{
+  border:0;background:#367bd6;color:#fff;border-radius:4px;
+  padding:0 16px;font-size:13px;white-space:nowrap;
+}
+.birthday-tabs{display:flex;gap:0;padding:10px 16px 0;border-bottom:1px solid #edf1f6;}
+.birthday-tabs button{
+  padding:9px 14px;background:transparent;border:0;border-bottom:2px solid transparent;
+  color:#718096;font-size:13px;
+}
+.birthday-tabs button.active{color:#367bd6;border-bottom-color:#367bd6;background:#f9fbfd;}
+.birthday-list{height:205px;overflow-y:auto;padding:8px 20px 16px;}
+.birthday-today{font-size:12px;margin-bottom:10px;color:#4c5562;}
+.birthday-person{display:flex;align-items:center;gap:13px;margin:13px 0;}
+.birthday-avatar{
+  width:50px;height:50px;border:2px solid #3d81d5;border-radius:50%;
+  display:grid;place-items:center;font-weight:700;color:#233146;position:relative;flex:0 0 auto;
+}
+.birthday-avatar.tone-1{border-color:#46cd8a;}
+.birthday-avatar.tone-2{border-color:#f3ac39;}
+.birthday-avatar span{
+  position:absolute;right:-3px;bottom:0;background:#fff;color:#4c86d6;
+  width:19px;height:19px;border-radius:50%;font-size:10px;display:grid;place-items:center;
+}
+.birthday-person strong{display:block;font-size:13px;color:#252c38;text-transform:uppercase;}
+.birthday-person small{display:block;margin-top:3px;color:#717b87;font-size:12px;}
+.birthday-empty{height:170px;display:grid;place-items:center;color:#89929c;font-size:13px;}
+.calendar-card{padding:17px 18px 20px;}
+.calendar-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;}
+.calendar-toolbar>div:first-child{display:flex;align-items:center;gap:28px;}
+.calendar-toolbar strong{font-size:14px;font-weight:500;}
+.calendar-toolbar span{font-size:14px;}
+.calendar-actions{display:flex;gap:9px;}
+.calendar-actions button{
+  width:34px;height:34px;border:0;border-radius:5px;background:#f4f6f8;
+  color:#626b75;font-size:21px;line-height:1;
+}
+.calendar-week,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.calendar-week span{text-align:center;padding:7px 0 10px;font-size:12px;font-weight:600;}
+.calendar-grid{gap:2px;}
+.calendar-day{
+  min-height:61px;border:0;border-radius:6px;background:#f8f9fb;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#242a30;font-size:15px;
+}
+.calendar-day small{font-size:10px;margin-top:5px;color:#48515b;}
+.calendar-day.muted{opacity:.25;}
+.calendar-day.holiday:not(.muted){color:#e94d57;background:#fff1f2;}
+.calendar-day.holiday:not(.muted) small{color:#e94d57;}
+.calendar-day.today{background:#cfe1f7;color:#142a44;}
+.calendar-day:hover{outline:1px solid #91b9e8;}
+
+@media (max-width:1300px){
+  .dashboard-layout{grid-template-columns:minmax(0,1.5fr) minmax(310px,.8fr);}
+  .overview-card{min-height:112px;padding:19px;}
+  .overview-icon{width:64px;height:64px;}
+  .overview-icon svg{width:39px;height:39px;}
+  .overview-copy strong{font-size:28px;}
+  .overview-copy span{font-size:18px;}
+}
+@media (max-width:1050px){
+  .dashboard-layout{grid-template-columns:1fr;}
+  .dashboard-side{display:grid;grid-template-columns:1fr 1fr;}
+}
+@media (max-width:760px){
+  .content:has(.dashboard-layout){padding:14px;}
+  .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .overview-card{min-height:100px;padding:14px;}
+  .overview-icon{width:52px;height:52px;border-radius:10px;}
+  .overview-icon svg{width:31px;height:31px;}
+  .overview-copy strong{font-size:24px;}
+  .overview-copy span{font-size:14px;}
+  .dashboard-side{display:flex;}
+  .distribution-heading h3{font-size:21px;}
+  .birthday-header{align-items:flex-start;flex-direction:column;}
+  .wish-controls{width:100%;}
+  .calendar-card{padding:12px 8px;}
+  .calendar-day{min-height:51px;}
+}
+@media (max-width:430px){
+  .overview-grid{grid-template-columns:1fr;}
+  .overview-card{min-height:92px;}
+}
