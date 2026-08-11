@@ -146,7 +146,7 @@
     const host=student ? document.getElementById('studentModalBody') : document.getElementById('studentForm');
     const record=student||{};
     const classId=record.classId || (data.classes[0]&&data.classes[0].id) || '';
-    host.innerHTML=`<div class="student-form-heading"><div><h3>${student?'Edit Student Information':'Add Student Manually'}</h3><p>${student?'Update any field below and save the complete record.':'Enter the student information below.'}</p></div>${student?'<button type="button" class="ghost" id="cancelStudentEdit">Back to details</button>':''}</div><form class="student-form student-complete-form" id="studentEditForm">
+    host.innerHTML=`<div class="student-form-heading"><div><h3>${student?'Edit Student Information':'Add Student Manually'}</h3><p>${student?'Update any field below and save the complete record.':'Enter the student information below.'}</p></div>${student?'<button type="button" class="ghost" id="cancelStudentEdit">Back to details</button>':''}</div><form class="student-form student-complete-form" id="studentEditForm" onsubmit="return false;">
       <label class="photo-input">${photoMarkup(record,true)}<span>Student Photo</span><input type="file" id="sfPhoto" accept="image/*"></label>
       <label><span>S.N</span><input id="sfSn" placeholder="S.N" value="${escapeHtml(record.sn||'')}"></label>
       <label><span>Student Id</span><input id="sfStudentId" placeholder="Student Id" value="${escapeHtml(record.studentId||'')}"></label>
@@ -169,7 +169,7 @@
     document.getElementById('sfClass').onchange=event=>{ document.getElementById('sfSection').innerHTML=sectionOptions(event.target.value); };
     const cancelButton=document.getElementById('cancelStudentEdit');
     if(cancelButton) cancelButton.onclick=()=>renderStudentProfile(record);
-    document.getElementById('studentEditForm').onsubmit=async event=>{
+    document.getElementById('studentEditForm').addEventListener('submit',async event=>{
       event.preventDefault();
       const file=document.getElementById('sfPhoto').files[0];
       const selectedClass=data.classes.find(item=>item.id===document.getElementById('sfClass').value);
@@ -191,7 +191,7 @@
       if(index>=0) data.students[index]=next; else data.students.push(next);
       await saveData();
       if(student){ renderStudentProfile(next); } else { renderStudents(document.getElementById('content')); }
-    };
+    });
   }
 
   function profileField(student,key,label,index){
