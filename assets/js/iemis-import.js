@@ -1,194 +1,248 @@
 'use strict';
 
-/* IEMIS Excel import extension for the Students module. */
+/* Student management and exact IEMIS Excel import. */
 (function(){
-  const originalRenderStudents = renderStudents;
-  let importState = null;
-
-  const fields = [
-    {key:'iemisId',label:'IEMIS ID',aliases:['iemis id','iemisid','student id','studentid','emis id']},
-    {key:'name',label:'Student Name *',aliases:['student name','studentname','name of student','full name','fullname','name']},
-    {key:'roll',label:'Roll No.',aliases:['roll no','roll number','rollno','roll']},
-    {key:'className',label:'Class *',aliases:['class','grade','student class','current class']},
-    {key:'sectionName',label:'Section',aliases:['section','sec']},
-    {key:'gender',label:'Gender',aliases:['gender','sex']},
-    {key:'dob',label:'Date of Birth',aliases:['date of birth','dateofbirth','dob','birth date']},
-    {key:'guardian',label:'Guardian Name',aliases:['guardian name','guardian','father name','mother name','parent name']},
-    {key:'contact',label:'Contact No.',aliases:['contact no','contact number','mobile no','mobile number','phone','guardian mobile']}
+  const COLUMN_KEY = 'student-visible-columns-v2';
+  const DEFAULT_COLUMNS = ['photo','studentId','fullName','gender','currentClass','section'];
+  const IEMIS_COLUMNS = [
+    ['sn','S.N'],['studentId','Student Id'],['fullName','FullName'],['gender','Gender'],
+    ['fatherName','Father Name'],['motherName','Mother Name'],['currentClass','CurrentClass'],
+    ['section','Section'],['year','Year'],['permanentAddress','Permanent Address'],
+    ['temporaryAddress','Temporary Address'],['dob','DOB'],['motherTongue','Mother Tongue'],
+    ['disabilityType','Disability Type'],['age','Age'],['guardianName','Guardian Name'],
+    ['guardianContact','Guardian Contact Number']
   ];
+  const OPTIONAL_COLUMNS = [['photo','Photo']];
+  const ALL_COLUMNS = [...OPTIONAL_COLUMNS,...IEMIS_COLUMNS];
+  let importedRows = [];
+  let sortState = {key:'fullName',direction:'asc'};
+  let listMode = 'active';
 
-  function normal(value){
-    return String(value ?? '').trim().toLowerCase().replace(/[_./()-]+/g,' ').replace(/\s+/g,' ');
-  }
-  function valueOf(value){
+  function norm(value){ return String(value ?? '').trim().toLowerCase(); }
+  function text(value){
     if(value instanceof Date && !Number.isNaN(value.valueOf())) return value.toISOString().slice(0,10);
     return String(value ?? '').trim();
   }
-  function classKey(value){
-    return normal(value).replace(/^(grade|class|कक्षा)\s*/,'').replace(/^0+/, '');
-  }
-  function findClass(value){
-    const key=classKey(value);
-    return data.classes.find(item=>classKey(item.name)===key || normal(item.name)===normal(value));
-  }
-  function detect(headers){
-    const mapping={};
-    fields.forEach(field=>{
-      mapping[field.key]=headers.find(header=>field.aliases.includes(normal(header))) || '';
-    });
-    return mapping;
-  }
-  function gender(value){
-    const key=normal(value);
-    if(['m','male','boy','पुरुष','छात्र'].includes(key)) return 'Male';
-    if(['f','female','girl','महिला','छात्रा'].includes(key)) return 'Female';
-    return key ? 'Other' : '';
-  }
-  function isDuplicate(row){
-    if(row.iemisId && data.students.some(item=>valueOf(item.iemisId)===row.iemisId)) return true;
-    const classItem=findClass(row.className);
-    return !!(row.name && classItem && data.students.some(item=>
-      normal(item.name)===normal(row.name) && item.classId===classItem.id &&
-      (!row.roll || normal(item.roll)===normal(row.roll))
-    ));
-  }
-  function mappedRows(){
-    if(!importState) return [];
-    return importState.rows.map((source,index)=>{
-      const row={sourceRow:index+2};
-      fields.forEach(field=>{ row[field.key]=valueOf(source[importState.mapping[field.key]]); });
-      row.gender=gender(row.gender);
-      row.errors=[];
-      if(!row.name) row.errors.push('Student name missing');
-      if(!row.className) row.errors.push('Class missing');
-      else if(!findClass(row.className)) row.errors.push('Class not found');
-      row.duplicate=isDuplicate(row);
-      return row;
+  function ensureStudentState(){
+    data.settings = data.settings || {};
+    data.settings.academicYear = String(data.settings.academicYear || '2083');
+    data.students = data.students || [];
+    data.students.forEach(student=>{
+      if(!student.status) student.status = 'active';
+      if(!student.fullName) student.fullName = student.name || '';
+      if(!student.studentId) student.studentId = student.iemisId || '';
+      if(!student.dob) student.dob = student.dateOfBirth || '';
+      if(!student.guardianName) student.guardianName = student.guardian || '';
+      if(!student.guardianContact) student.guardianContact = student.contact || '';
+      if(!student.year) student.year = student.academicYear || data.settings.academicYear;
     });
   }
-  function ensureSection(classId,name){
-    name=valueOf(name);
-    if(!name) return '';
-    let section=data.sections.find(item=>item.classId===classId && normal(item.name)===normal(name));
-    if(!section){
-      section={id:uid(),classId,name};
-      data.sections.push(section);
-    }
-    return section.id;
+  function selectedColumns(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(COLUMN_KEY));
+      return Array.isArray(saved) && saved.length ? saved.filter(key=>ALL_COLUMNS.some(([item])=>item===key)) : DEFAULT_COLUMNS;
+    }catch(error){ return DEFAULT_COLUMNS; }
   }
-  function selectHtml(field){
-    return `<label><span>${escapeHtml(field.label)}</span><select data-map="${field.key}">
-      <option value="">— Not mapped —</option>
-      ${importState.headers.map(header=>`<option value="${escapeHtml(header)}" ${header===importState.mapping[field.key]?'selected':''}>${escapeHtml(header)}</option>`).join('')}
-    </select></label>`;
+  function saveColumns(columns){ localStorage.setItem(COLUMN_KEY,JSON.stringify(columns)); }
+  function classFor(student){ return data.classes.find(item=>item.id===student.classId); }
+  function sectionFor(student){ return data.sections.find(item=>item.id===student.sectionId); }
+  function displayValue(student,key,index){
+    const cl=classFor(student), sec=sectionFor(student);
+    const values={
+      sn:student.sn || index+1, studentId:student.studentId || student.iemisId,
+      fullName:student.fullName || student.name, currentClass:student.currentClass || (cl&&cl.name),
+      section:student.section || (sec&&sec.name), year:student.year || student.academicYear,
+      guardianName:student.guardianName || student.guardian,
+      guardianContact:student.guardianContact || student.contact
+    };
+    return values[key] ?? student[key] ?? '';
   }
-  function paintPreview(){
-    const host=document.getElementById('iemisWorkspace');
-    if(!host || !importState) return;
-    const rows=mappedRows();
-    const ready=rows.filter(row=>!row.errors.length && !row.duplicate);
-    const duplicates=rows.filter(row=>!row.errors.length && row.duplicate);
-    const invalid=rows.filter(row=>row.errors.length);
-    host.innerHTML=`
-      <div class="iemis-step">
-        <div class="iemis-step-title"><strong>2. Match Excel columns</strong><span>Required: Student Name and Class</span></div>
-        <div class="iemis-mapping">${fields.map(selectHtml).join('')}</div>
-      </div>
-      <div class="iemis-summary">
-        <span>${rows.length}<small>Total rows</small></span>
-        <span class="ready">${ready.length}<small>Ready</small></span>
-        <span class="duplicate">${duplicates.length}<small>Duplicates</small></span>
-        <span class="invalid">${invalid.length}<small>Invalid</small></span>
-      </div>
-      <div class="iemis-preview-head">
-        <div><strong>3. Review before import</strong><small>Showing first ${Math.min(rows.length,100)} rows</small></div>
-        <button class="primary" id="confirmIemis" ${ready.length?'':'disabled'}>Import ${ready.length} students</button>
-      </div>
-      <div class="table-scroll"><table class="data-table iemis-preview-table">
-        <thead><tr><th>Status</th><th>IEMIS ID</th><th>Name</th><th>Roll</th><th>Class</th><th>Section</th><th>Gender</th><th>DOB</th></tr></thead>
-        <tbody>${rows.slice(0,100).map(row=>`<tr>
-          <td>${row.errors.length?`<span class="import-status error" title="${escapeHtml(row.errors.join(', '))}">Invalid</span>`:row.duplicate?'<span class="import-status duplicate">Duplicate</span>':'<span class="import-status ready">Ready</span>'}</td>
-          <td class="mono">${escapeHtml(row.iemisId||'—')}</td><td>${escapeHtml(row.name||'—')}</td><td>${escapeHtml(row.roll||'—')}</td>
-          <td>${escapeHtml(row.className||'—')}</td><td>${escapeHtml(row.sectionName||'—')}</td><td>${escapeHtml(row.gender||'—')}</td><td>${escapeHtml(row.dob||'—')}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
-
-    host.querySelectorAll('[data-map]').forEach(select=>select.onchange=()=>{
-      importState.mapping[select.dataset.map]=select.value;
-      paintPreview();
-    });
-    document.getElementById('confirmIemis').onclick=async()=>{
-      const students=mappedRows().filter(row=>!row.errors.length && !row.duplicate);
-      students.forEach(row=>{
-        const classItem=findClass(row.className);
-        data.students.push({
-          id:uid(),iemisId:row.iemisId,name:row.name,roll:row.roll,classId:classItem.id,
-          sectionId:ensureSection(classItem.id,row.sectionName),gender:row.gender||'Other',dob:row.dob,
-          guardian:row.guardian,contact:row.contact,source:'IEMIS Excel'
-        });
-      });
-      await saveData();
-      alert(`${students.length} students imported successfully.`);
-      importState=null;
-      renderStudents(document.getElementById('content'));
+  function compare(a,b,key){
+    const av=text(displayValue(a,key,0)), bv=text(displayValue(b,key,0));
+    const an=Number(av), bn=Number(bv);
+    const result=av!=='' && bv!=='' && Number.isFinite(an) && Number.isFinite(bn)
+      ? an-bn : av.localeCompare(bv,undefined,{numeric:true,sensitivity:'base'});
+    return sortState.direction==='asc' ? result : -result;
+  }
+  function photoMarkup(student,large=false){
+    const src=text(student.photo);
+    const cls=large?'student-photo large':'student-photo';
+    return src ? `<span class="${cls}"><img src="${escapeHtml(src)}" alt="${escapeHtml(student.fullName||student.name||'Student')}"></span>` : `<span class="${cls}" aria-label="No photo"></span>`;
+  }
+  function optionsForClass(selected=''){
+    return data.classes.map(item=>`<option value="${item.id}" ${item.id===selected?'selected':''}>${escapeHtml(item.name)}</option>`).join('');
+  }
+  function sectionOptions(classId,selected=''){
+    return data.sections.filter(item=>item.classId===classId).map(item=>`<option value="${item.id}" ${item.id===selected?'selected':''}>${escapeHtml(item.name)}</option>`).join('');
+  }
+  function studentPayload(source){
+    return {
+      id:source.id||uid(), sn:text(source.sn), studentId:text(source.studentId), fullName:text(source.fullName),
+      name:text(source.fullName), gender:text(source.gender)||'Other', fatherName:text(source.fatherName),
+      motherName:text(source.motherName), classId:source.classId||'', sectionId:source.sectionId||'',
+      currentClass:text(source.currentClass), section:text(source.section), year:text(source.year)||data.settings.academicYear,
+      academicYear:text(source.year)||data.settings.academicYear, permanentAddress:text(source.permanentAddress),
+      temporaryAddress:text(source.temporaryAddress), dob:text(source.dob), motherTongue:text(source.motherTongue),
+      disabilityType:text(source.disabilityType), age:text(source.age), guardianName:text(source.guardianName),
+      guardian:text(source.guardianName), guardianContact:text(source.guardianContact), contact:text(source.guardianContact),
+      photo:text(source.photo), status:source.status||'active', source:source.source||'Manual'
     };
   }
-  async function readFile(file){
-    if(typeof XLSX==='undefined'){ alert('Excel reader did not load. Check the internet connection and reload.'); return; }
-    if(!/\.(xlsx|xls|csv)$/i.test(file.name)){ alert('Choose an .xlsx, .xls or .csv file.'); return; }
+  function fileToDataUrl(file){
+    return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(file); });
+  }
+
+  renderStudents=function(c){
+    ensureStudentState();
+    const columns=selectedColumns();
+    c.innerHTML=`<div class="panel-box student-panel">
+      <div class="student-heading"><div><h3>Students</h3><div class="hint">Academic Year: <strong>${escapeHtml(data.settings.academicYear)}</strong> · Student records cannot be deleted.</div></div>
+        <div class="student-header-actions"><button class="ghost" id="setAcademicYear">Set Academic Year</button><button class="primary" id="openIemis">⇧ Import from IEMIS</button></div></div>
+      <section id="iemisImporter" class="iemis-importer hidden"></section>
+      <details class="student-add-card"><summary>＋ Add student manually</summary><div id="studentForm"></div></details>
+      <div class="student-list-tabs"><button data-mode="active" class="${listMode==='active'?'active':''}">Active Students</button><button data-mode="inactive" class="${listMode==='inactive'?'active':''}">Inactive / Vault</button></div>
+      <div class="student-filter-bar">
+        <label><span>Class</span><select id="stuFilterClass"><option value="__all">All classes</option>${optionsForClass()}</select></label>
+        <label><span>Section</span><select id="stuFilterSection"><option value="__all">All sections</option></select></label>
+        <label class="student-keyword"><span>Student</span><input type="search" id="stuFilterKeyword" placeholder="Name or Student Id"></label>
+        <button class="student-search-btn" id="stuSearchBtn" type="button">Search</button>
+        <details class="column-picker"><summary>Column Visibility</summary><div>${ALL_COLUMNS.map(([key,label])=>`<label><input type="checkbox" value="${key}" ${columns.includes(key)?'checked':''}> ${escapeHtml(label)}</label>`).join('')}</div></details>
+      </div>
+      <div class="table-scroll"><table class="data-table student-data-table"><thead id="stuHead"></thead><tbody id="stuBody"></tbody></table></div>
+      <div class="empty-msg hidden" id="stuEmpty">No students found.</div>
+      <div class="student-modal hidden" id="studentModal"><div class="student-modal-card"><button class="modal-close" type="button">×</button><div id="studentModalBody"></div></div></div>
+    </div>`;
+    renderManualForm();
+    bindStudentEvents();
+    refreshFilterSections();
+    paintStudentTable();
+  };
+
+  function bindStudentEvents(){
+    document.getElementById('setAcademicYear').onclick=async()=>{
+      const next=prompt('Set the active academic year:',data.settings.academicYear);
+      if(!next) return;
+      if(!/^\d{4}$/.test(next.trim())){ alert('Enter a four-digit academic year, for example 2084.'); return; }
+      data.settings.academicYear=next.trim(); await saveData(); renderStudents(document.getElementById('content'));
+    };
+    document.getElementById('openIemis').onclick=()=>{ const box=document.getElementById('iemisImporter'); box.classList.toggle('hidden'); if(!box.classList.contains('hidden')) renderImporter(box); };
+    document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{ listMode=button.dataset.mode; renderStudents(document.getElementById('content')); });
+    document.getElementById('stuFilterClass').onchange=refreshFilterSections;
+    document.getElementById('stuSearchBtn').onclick=paintStudentTable;
+    document.getElementById('stuFilterKeyword').onkeydown=event=>{ if(event.key==='Enter') paintStudentTable(); };
+    document.querySelectorAll('.column-picker input').forEach(input=>input.onchange=()=>{
+      const picked=[...document.querySelectorAll('.column-picker input:checked')].map(item=>item.value);
+      if(!picked.length){ input.checked=true; return; }
+      saveColumns(picked); paintStudentTable();
+    });
+    document.querySelector('#studentModal .modal-close').onclick=()=>document.getElementById('studentModal').classList.add('hidden');
+  }
+  function refreshFilterSections(){
+    const classId=document.getElementById('stuFilterClass').value;
+    const sections=classId==='__all'?data.sections:data.sections.filter(item=>item.classId===classId);
+    document.getElementById('stuFilterSection').innerHTML='<option value="__all">All sections</option>'+sections.map(item=>`<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('');
+  }
+  function renderManualForm(student=null){
+    const host=document.getElementById('studentForm') || document.getElementById('studentModalBody');
+    const record=student||{};
+    const classId=record.classId || (data.classes[0]&&data.classes[0].id) || '';
+    host.innerHTML=`<form class="student-form" id="studentEditForm">
+      <label class="photo-input">${photoMarkup(record,true)}<span>Student Photo</span><input type="file" id="sfPhoto" accept="image/*"></label>
+      <input id="sfStudentId" placeholder="Student Id" value="${escapeHtml(record.studentId||'')}">
+      <input id="sfFullName" required placeholder="Full Name *" value="${escapeHtml(record.fullName||record.name||'')}">
+      <select id="sfGender"><option>Male</option><option ${record.gender==='Female'?'selected':''}>Female</option><option ${record.gender==='Other'?'selected':''}>Other</option></select>
+      <select id="sfClass">${optionsForClass(classId)}</select><select id="sfSection">${sectionOptions(classId,record.sectionId)}</select>
+      <input id="sfDob" placeholder="DOB" value="${escapeHtml(record.dob||'')}"><input id="sfFather" placeholder="Father Name" value="${escapeHtml(record.fatherName||'')}">
+      <input id="sfMother" placeholder="Mother Name" value="${escapeHtml(record.motherName||'')}"><input id="sfGuardian" placeholder="Guardian Name" value="${escapeHtml(record.guardianName||record.guardian||'')}">
+      <input id="sfContact" placeholder="Guardian Contact Number" value="${escapeHtml(record.guardianContact||record.contact||'')}"><input id="sfPermanent" placeholder="Permanent Address" value="${escapeHtml(record.permanentAddress||'')}">
+      <button class="primary" type="submit">${student?'Save changes':'Add student'}</button></form>`;
+    document.getElementById('sfGender').value=record.gender||'Male';
+    document.getElementById('sfClass').onchange=event=>{ document.getElementById('sfSection').innerHTML=sectionOptions(event.target.value); };
+    document.getElementById('studentEditForm').onsubmit=async event=>{
+      event.preventDefault();
+      const file=document.getElementById('sfPhoto').files[0];
+      const next=studentPayload({...record,
+        studentId:document.getElementById('sfStudentId').value,fullName:document.getElementById('sfFullName').value,
+        gender:document.getElementById('sfGender').value,classId:document.getElementById('sfClass').value,
+        sectionId:document.getElementById('sfSection').value,dob:document.getElementById('sfDob').value,
+        fatherName:document.getElementById('sfFather').value,motherName:document.getElementById('sfMother').value,
+        guardianName:document.getElementById('sfGuardian').value,guardianContact:document.getElementById('sfContact').value,
+        permanentAddress:document.getElementById('sfPermanent').value,photo:file?await fileToDataUrl(file):record.photo
+      });
+      if(next.studentId && data.students.some(item=>item.id!==next.id && text(item.studentId||item.iemisId)===next.studentId)){ alert('Student Id already exists.'); return; }
+      const index=data.students.findIndex(item=>item.id===next.id);
+      if(index>=0) data.students[index]=next; else data.students.push(next);
+      await saveData(); renderStudents(document.getElementById('content'));
+    };
+  }
+  function paintStudentTable(){
+    const columns=selectedColumns();
+    const labels=Object.fromEntries(ALL_COLUMNS);
+    document.getElementById('stuHead').innerHTML='<tr>'+columns.map(key=>`<th><button class="sort-heading" data-sort="${key}">${escapeHtml(labels[key])}<span>${sortState.key===key?(sortState.direction==='asc'?'▲':'▼'):'↕'}</span></button></th>`).join('')+'<th>Action</th></tr>';
+    document.querySelectorAll('[data-sort]').forEach(button=>button.onclick=()=>{ const key=button.dataset.sort; sortState={key,direction:sortState.key===key&&sortState.direction==='asc'?'desc':'asc'}; paintStudentTable(); });
+    const classId=document.getElementById('stuFilterClass').value, sectionId=document.getElementById('stuFilterSection').value;
+    const keyword=norm(document.getElementById('stuFilterKeyword').value);
+    const list=data.students.filter(student=>{
+      const status=student.status==='inactive'?'inactive':'active';
+      return status===listMode && (classId==='__all'||student.classId===classId) && (sectionId==='__all'||student.sectionId===sectionId)
+        && (!keyword||norm(student.fullName||student.name).includes(keyword)||norm(student.studentId||student.iemisId).includes(keyword));
+    }).sort((a,b)=>compare(a,b,sortState.key));
+    document.getElementById('stuEmpty').classList.toggle('hidden',!!list.length);
+    document.getElementById('stuBody').innerHTML=list.map((student,index)=>`<tr>${columns.map(key=>`<td>${key==='photo'?photoMarkup(student):escapeHtml(displayValue(student,key,index)||'—')}</td>`).join('')}
+      <td><details class="action-menu"><summary>Action</summary><div><button data-action="view" data-id="${student.id}">View</button><button data-action="edit" data-id="${student.id}">Edit</button>${listMode==='active'?`<button data-action="inactive" data-id="${student.id}">Not in school</button>`:`<button data-action="rejoin" data-id="${student.id}">Rejoin school</button>`}</div></details></td></tr>`).join('');
+    document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>handleAction(button.dataset.action,button.dataset.id));
+  }
+  async function handleAction(action,id){
+    const student=data.students.find(item=>item.id===id); if(!student) return;
+    if(action==='inactive'){
+      if(!confirm(`Move ${student.fullName||student.name} to Inactive / Vault?`)) return;
+      student.status='inactive'; student.inactiveDate=new Date().toISOString(); await saveData(); paintStudentTable(); return;
+    }
+    if(action==='rejoin'){
+      student.status='active'; student.rejoinedDate=new Date().toISOString(); student.year=data.settings.academicYear; student.academicYear=data.settings.academicYear; await saveData(); renderStudents(document.getElementById('content')); return;
+    }
+    const modal=document.getElementById('studentModal'), host=document.getElementById('studentModalBody'); modal.classList.remove('hidden');
+    if(action==='edit'){ renderManualForm(student); return; }
+    host.innerHTML=`<div class="student-profile">${photoMarkup(student,true)}<h3>${escapeHtml(student.fullName||student.name)}</h3>${IEMIS_COLUMNS.map(([key,label],index)=>`<p><strong>${escapeHtml(label)}</strong><span>${escapeHtml(displayValue(student,key,index)||'—')}</span></p>`).join('')}</div>`;
+  }
+
+  function findClass(value){ const key=norm(value).replace(/^(class|grade)\s*/, '').replace(/^0+/,''); return data.classes.find(item=>norm(item.name)===norm(value)||norm(item.name).replace(/^(class|grade)\s*/,'').replace(/^0+/,'')===key); }
+  function ensureSection(classId,name){ let item=data.sections.find(sec=>sec.classId===classId&&norm(sec.name)===norm(name)); if(!item&&text(name)){ item={id:uid(),classId,name:text(name)}; data.sections.push(item); } return item?item.id:''; }
+  function renderImporter(host){
+    host.innerHTML=`<div class="iemis-import-header"><div><h3>IEMIS Student Import</h3><p>17 exact IEMIS headings are required. Photo is optional.</p></div><button class="ghost" id="closeIemis">Close</button></div>
+      <div class="iemis-upload"><div><strong>Active Academic Year: ${escapeHtml(data.settings.academicYear)}</strong><small>Imported records will be assigned to this active year.</small></div><div class="iemis-upload-actions"><button class="ghost" id="iemisTemplate">Download template</button><label class="primary file-button">Choose Excel<input type="file" id="iemisFile" accept=".xlsx,.xls,.csv"></label></div></div><div id="iemisWorkspace" class="iemis-placeholder">Choose an IEMIS export file.</div>`;
+    document.getElementById('closeIemis').onclick=()=>host.classList.add('hidden');
+    document.getElementById('iemisTemplate').onclick=downloadTemplate;
+    document.getElementById('iemisFile').onchange=event=>readIemis(event.target.files[0]);
+  }
+  async function readIemis(file){
+    if(!file||typeof XLSX==='undefined'){ alert('Excel reader is unavailable.'); return; }
     try{
       const book=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
-      const sheet=book.Sheets[book.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
-      if(!rows.length){ alert('No student rows were found in the first worksheet.'); return; }
-      const headers=Object.keys(rows.reduce((all,row)=>Object.assign(all,row),{}));
-      importState={rows,headers,mapping:detect(headers),fileName:file.name};
-      paintPreview();
-    }catch(error){
-      console.error(error);
-      alert('The file could not be read. Export it again from IEMIS and retry.');
-    }
+      const rows=XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]],{defval:'',raw:false});
+      const headers=rows.length?Object.keys(rows[0]):[];
+      const required=IEMIS_COLUMNS.map(([,label])=>label), missing=required.filter(label=>!headers.includes(label));
+      if(missing.length){ document.getElementById('iemisWorkspace').innerHTML=`<span class="import-status error">Invalid headings</span><p>Missing: ${escapeHtml(missing.join(', '))}</p>`; return; }
+      importedRows=rows.map((row,index)=>{
+        const source={}; IEMIS_COLUMNS.forEach(([key,label])=>source[key]=text(row[label])); source.photo=text(row.Photo); source.source='IEMIS Excel';
+        const cl=findClass(source.currentClass); const errors=[];
+        if(!source.studentId) errors.push('Student Id missing'); if(!source.fullName) errors.push('FullName missing'); if(!cl) errors.push('Class not found');
+        if(data.students.some(item=>text(item.studentId||item.iemisId)===source.studentId)) errors.push('Duplicate Student Id');
+        return {source,classItem:cl,errors,row:index+2};
+      });
+      const ready=importedRows.filter(item=>!item.errors.length);
+      document.getElementById('iemisWorkspace').innerHTML=`<div class="iemis-summary"><span>${importedRows.length}<small>Total</small></span><span class="ready">${ready.length}<small>Ready</small></span><span class="invalid">${importedRows.length-ready.length}<small>Invalid</small></span></div><div class="iemis-preview-head"><div><strong>Import preview</strong><small>First 100 records</small></div><button class="primary" id="confirmIemis" ${ready.length?'':'disabled'}>Import ${ready.length}</button></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Status</th><th>Student Id</th><th>FullName</th><th>Class</th><th>Section</th><th>Photo</th></tr></thead><tbody>${importedRows.slice(0,100).map(item=>`<tr><td>${item.errors.length?`<span class="import-status error" title="${escapeHtml(item.errors.join(', '))}">Invalid</span>`:'<span class="import-status ready">Ready</span>'}</td><td>${escapeHtml(item.source.studentId)}</td><td>${escapeHtml(item.source.fullName)}</td><td>${escapeHtml(item.source.currentClass)}</td><td>${escapeHtml(item.source.section)}</td><td>${item.source.photo?'Yes':'—'}</td></tr>`).join('')}</tbody></table></div>`;
+      document.getElementById('confirmIemis').onclick=confirmImport;
+    }catch(error){ console.error(error); alert('Could not read the Excel file.'); }
+  }
+  async function confirmImport(){
+    const ready=importedRows.filter(item=>!item.errors.length);
+    ready.forEach(item=>{ item.source.classId=item.classItem.id; item.source.sectionId=ensureSection(item.classItem.id,item.source.section); item.source.year=data.settings.academicYear; data.students.push(studentPayload(item.source)); });
+    await saveData(); alert(`${ready.length} students imported.`); importedRows=[]; renderStudents(document.getElementById('content'));
   }
   function downloadTemplate(){
-    if(typeof XLSX==='undefined'){ alert('Excel reader did not load.'); return; }
-    const sample=[{'IEMIS ID':'','Student Name':'','Roll No.':'','Class':'Class 1','Section':'A','Gender':'Male','Date of Birth':'','Guardian Name':'','Contact No.':''}];
-    const book=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet(sample),'Students');
-    XLSX.writeFile(book,'iemis-student-import-template.xlsx');
+    if(typeof XLSX==='undefined'){ alert('Excel reader is unavailable.'); return; }
+    const row={}; IEMIS_COLUMNS.forEach(([,label])=>row[label]=''); row.Photo='';
+    const book=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book,XLSX.utils.json_to_sheet([row]),'Students'); XLSX.writeFile(book,'iemis-student-template.xlsx');
   }
-  function enhanceStudentPage(){
-    const panel=document.querySelector('#content > .panel-box');
-    if(!panel || document.getElementById('iemisImporter')) return;
-    const heading=panel.querySelector('h3');
-    const hint=panel.querySelector('.hint');
-    const header=document.createElement('div');
-    header.className='student-heading';
-    heading.parentNode.insertBefore(header,heading);
-    header.append(heading,hint);
-    header.insertAdjacentHTML('beforeend','<button class="primary" id="openIemis">⇧ Import from IEMIS</button>');
-    header.insertAdjacentHTML('afterend',`<section class="iemis-importer hidden" id="iemisImporter">
-      <div class="iemis-import-header"><div><h3>IEMIS Student Import</h3><p>Upload → match columns → preview → confirm. Nothing changes before confirmation.</p></div><button class="ghost" id="closeIemis">Close</button></div>
-      <div class="iemis-upload"><div><strong>1. Select IEMIS Excel file</strong><small>.xlsx, .xls or .csv · first worksheet is used</small></div>
-        <div class="iemis-upload-actions"><button class="ghost" id="iemisTemplate">Download sample</button><label class="primary file-button">Choose file<input type="file" id="iemisFile" accept=".xlsx,.xls,.csv"></label></div>
-      </div><div id="iemisWorkspace"><div class="iemis-placeholder">Choose a file to begin.</div></div>
-    </section>`);
-    const importer=document.getElementById('iemisImporter');
-    document.getElementById('openIemis').onclick=()=>{ importer.classList.remove('hidden'); if(importState) paintPreview(); };
-    document.getElementById('closeIemis').onclick=()=>importer.classList.add('hidden');
-    document.getElementById('iemisTemplate').onclick=downloadTemplate;
-    document.getElementById('iemisFile').onchange=event=>{ if(event.target.files[0]) readFile(event.target.files[0]); };
-
-    const table=panel.querySelector('.data-table');
-    table.parentNode.insertBefore(Object.assign(document.createElement('div'),{className:'table-scroll'}),table).appendChild(table);
-    table.querySelector('thead tr').insertAdjacentHTML('afterbegin','<th>IEMIS ID</th>');
-    data.students.forEach((student,index)=>{
-      const row=table.tBodies[0].rows[index];
-      if(row) row.insertAdjacentHTML('afterbegin',`<td class="mono">${escapeHtml(student.iemisId||'—')}</td>`);
-    });
-  }
-
-  renderStudents=function(container){
-    originalRenderStudents(container);
-    enhanceStudentPage();
-  };
 })();
