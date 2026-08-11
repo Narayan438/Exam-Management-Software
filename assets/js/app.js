@@ -23,8 +23,13 @@ function defaultData(){
 
 async function loadData(){
   try{
-    const res = await window.storage.get(STORAGE_KEY);
-    data = res && res.value ? JSON.parse(res.value) : defaultData();
+    if(window.storage && typeof window.storage.get === 'function'){
+      const res = await window.storage.get(STORAGE_KEY);
+      data = res && res.value ? JSON.parse(res.value) : defaultData();
+    }else{
+      const saved = localStorage.getItem(STORAGE_KEY);
+      data = saved ? JSON.parse(saved) : defaultData();
+    }
   }catch(e){ data = defaultData(); }
   if(!data.roles || !data.roles.length) data = defaultData();
   if(!data.staff) data.staff = [];
@@ -32,7 +37,11 @@ async function loadData(){
   await saveData();
 }
 async function saveData(){
-  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(data)); }catch(e){ console.error('save failed', e); }
+  try{
+    const value = JSON.stringify(data);
+    if(window.storage && typeof window.storage.set === 'function') await window.storage.set(STORAGE_KEY, value);
+    else localStorage.setItem(STORAGE_KEY, value);
+  }catch(e){ console.error('save failed', e); }
 }
 
 function roleByName(name){ return data.roles.find(r=>r.name===name); }
