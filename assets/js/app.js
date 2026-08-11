@@ -1,6 +1,7 @@
 'use strict';
 
 const STORAGE_KEY = 'school-mgmt-data';
+const SESSION_KEY = 'school-mgmt-session';
 let data = null;
 let session = null; // {id, username, name, role}
 let currentPage = 'dashboard';
@@ -55,6 +56,33 @@ function hasPerm(key){
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 
+function saveSession(user){
+  try{ sessionStorage.setItem(SESSION_KEY, JSON.stringify({id:user.id})); }
+  catch(error){ console.warn('Session could not be persisted.', error); }
+}
+function clearSession(){
+  try{ sessionStorage.removeItem(SESSION_KEY); }
+  catch(error){ console.warn('Session could not be cleared.', error); }
+}
+function openAuthenticatedApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.remove('hidden');
+  document.getElementById('whoName').textContent = session.name;
+  document.getElementById('whoRole').textContent = session.role;
+  buildNav();
+  goPage(hasPerm(currentPage) ? currentPage : (hasPerm('dashboard') ? 'dashboard' : firstAllowedPage()));
+}
+function restoreSession(){
+  try{
+    const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+    session = saved && saved.id ? data.users.find(user=>user.id===saved.id && user.active!==false) || null : null;
+  }catch(error){
+    session = null;
+    clearSession();
+  }
+  if(session) openAuthenticatedApp();
+}
+
 function doLogin(){
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
@@ -65,15 +93,13 @@ function doLogin(){
   }
   document.getElementById('loginError').style.display='none';
   session = match;
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('appShell').classList.remove('hidden');
-  document.getElementById('whoName').textContent = session.name;
-  document.getElementById('whoRole').textContent = session.role;
-  buildNav();
-  goPage(hasPerm('dashboard') ? 'dashboard' : firstAllowedPage());
+  currentPage = hasPerm('dashboard') ? 'dashboard' : firstAllowedPage();
+  saveSession(match);
+  openAuthenticatedApp();
 }
 document.getElementById('logoutBtn').addEventListener('click', ()=>{
   session = null;
+  clearSession();
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('loginUser').value=''; document.getElementById('loginPass').value='';
@@ -726,4 +752,5 @@ function renderStaff(c){
 /* ---------------- INIT ---------------- */
 (async function init(){
   await loadData();
+  restoreSession();
 })();
