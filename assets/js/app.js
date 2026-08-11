@@ -547,8 +547,22 @@ function renderStudents(c){
       <input type="text" id="stuContact" placeholder="Contact no.">
       <button class="primary" id="stuAddBtn">Add student</button>
     </div>
-    <div class="row-form" style="border-bottom:none; padding-bottom:0;">
-      <select id="stuFilterClass"><option value="__all">All classes</option>${classOptions()}</select>
+    <div class="student-filter-bar">
+      <label><span>Academic Year</span>
+        <select id="stuFilterYear">
+          <option value="2083">2083</option><option value="2082">2082</option><option value="2081">2081</option>
+        </select>
+      </label>
+      <label><span>Class</span>
+        <select id="stuFilterClass"><option value="__all">All classes</option>${classOptions()}</select>
+      </label>
+      <label><span>Section</span>
+        <select id="stuFilterSection"><option value="__all">All sections</option></select>
+      </label>
+      <label class="student-keyword"><span>Student</span>
+        <input type="search" id="stuFilterKeyword" placeholder="Name or roll no.">
+      </label>
+      <button class="student-search-btn" id="stuSearchBtn" type="button">Search</button>
     </div>
     <table class="data-table">
       <thead><tr><th>Roll</th><th>Name</th><th>Class</th><th>Section</th><th>Gender</th><th>DOB</th><th>Guardian</th><th>Contact</th><th></th></tr></thead>
@@ -577,18 +591,44 @@ function renderStudents(c){
     const guardian = document.getElementById('stuGuardian').value.trim();
     const contact = document.getElementById('stuContact').value.trim();
     if(!name || !roll || !classId) return;
-    data.students.push({id:uid(), name, roll, classId, sectionId, gender, dob, guardian, contact});
+    data.students.push({id:uid(), name, roll, classId, sectionId, gender, dob, guardian, contact, academicYear:'2083'});
     saveData(); renderStudents(c);
   };
 
-  document.getElementById('stuFilterClass').onchange = ()=> paintStudentTable();
+  function refreshFilterSections(){
+    const classId = document.getElementById('stuFilterClass').value;
+    const sections = classId === '__all' ? data.sections : data.sections.filter(s=>s.classId===classId);
+    document.getElementById('stuFilterSection').innerHTML =
+      `<option value="__all">All sections</option>` +
+      sections.map(s=>{
+        const cl = data.classes.find(x=>x.id===s.classId);
+        const label = classId === '__all' && cl ? `${cl.name} - ${s.name}` : s.name;
+        return `<option value="${s.id}">${escapeHtml(label)}</option>`;
+      }).join('');
+  }
+  document.getElementById('stuFilterClass').onchange = refreshFilterSections;
+  document.getElementById('stuSearchBtn').onclick = paintStudentTable;
+  document.getElementById('stuFilterKeyword').onkeydown = event=>{
+    if(event.key === 'Enter') paintStudentTable();
+  };
+  refreshFilterSections();
   paintStudentTable();
 
   function paintStudentTable(){
     const tbody = document.getElementById('stuBody');
     tbody.innerHTML = '';
+    const filterYear = document.getElementById('stuFilterYear').value;
     const filterCls = document.getElementById('stuFilterClass').value;
-    const list = data.students.filter(s=> filterCls==='__all' || s.classId===filterCls);
+    const filterSec = document.getElementById('stuFilterSection').value;
+    const keyword = document.getElementById('stuFilterKeyword').value.trim().toLowerCase();
+    const list = data.students.filter(s=>{
+      const studentYear = String(s.academicYear || '2083');
+      const matchesKeyword = !keyword || String(s.name||'').toLowerCase().includes(keyword) || String(s.roll||'').toLowerCase().includes(keyword);
+      return studentYear === filterYear
+        && (filterCls === '__all' || s.classId === filterCls)
+        && (filterSec === '__all' || s.sectionId === filterSec)
+        && matchesKeyword;
+    });
     document.getElementById('stuEmpty').classList.toggle('hidden', list.length>0);
     list.forEach(s=>{
       const cl = data.classes.find(x=>x.id===s.classId);
