@@ -158,12 +158,13 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
   margin-bottom:22px;
 }
 .overview-card{
-  min-height:138px;
-  padding:20px 18px 20px 22px;
+  min-height:118px;
+  padding:18px 16px 18px 20px;
   border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap:12px;
   border:1px solid rgba(20,45,75,.02);
   box-shadow:0 7px 18px rgba(23,54,87,.025);
 }
@@ -171,17 +172,17 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 .overview-card.yellow{background:#fff8dc;}
 .overview-card.pink{background:#fff0f5;}
 .overview-card.green,.overview-card.mint{background:#e9fff5;}
-.overview-copy{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.overview-copy{display:flex;flex:1 1 auto;flex-direction:column;gap:4px;min-width:0;}
 .overview-copy strong{
   font-family:'IBM Plex Sans',sans-serif;
-  font-size:28px;
+  font-size:24px;
   line-height:1;
   color:#101820;
   letter-spacing:-1px;
 }
-.overview-copy span{font-size:16px;color:#17202a;white-space:nowrap;}
+.overview-copy span{font-size:14px;line-height:1.25;color:#17202a;white-space:normal;}
 .overview-icon{
-  width:54px;height:54px;border-radius:10px;
+  width:48px;height:48px;border-radius:9px;
   display:grid;place-items:center;color:#fff;flex:0 0 auto;
 }
 .overview-card.blue .overview-icon,.overview-card.sky .overview-icon{background:#0aa5e8;}
@@ -189,7 +190,7 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 .overview-card.pink .overview-icon{background:#ee3d6e;}
 .overview-card.green .overview-icon,.overview-card.mint .overview-icon{background:#47cc8b;}
 .overview-icon svg{
-  width:30px;height:30px;fill:none;stroke:currentColor;
+  width:26px;height:26px;fill:none;stroke:currentColor;
   stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
 }
 .distribution-card,.birthday-card,.calendar-card{
@@ -279,11 +280,11 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 
 @media (max-width:1300px){
   .dashboard-layout{grid-template-columns:minmax(0,1.5fr) minmax(310px,.8fr);}
-  .overview-card{min-height:112px;padding:19px;}
-  .overview-icon{width:56px;height:56px;}
-  .overview-icon svg{width:32px;height:32px;}
-  .overview-copy strong{font-size:25px;}
-  .overview-copy span{font-size:16px;}
+  .overview-card{min-height:104px;padding:16px;gap:10px;}
+  .overview-icon{width:44px;height:44px;}
+  .overview-icon svg{width:24px;height:24px;}
+  .overview-copy strong{font-size:22px;}
+  .overview-copy span{font-size:13px;}
 }
 @media (max-width:1050px){
   .dashboard-layout{grid-template-columns:1fr;}
@@ -292,11 +293,11 @@ table.data-table tbody tr:hover{ background: rgba(27,42,74,0.04); }
 @media (max-width:760px){
   .content:has(.dashboard-layout){padding:14px;}
   .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
-  .overview-card{min-height:100px;padding:14px;}
-  .overview-icon{width:48px;height:48px;border-radius:10px;}
-  .overview-icon svg{width:28px;height:28px;}
-  .overview-copy strong{font-size:22px;}
-  .overview-copy span{font-size:13px;}
+  .overview-card{min-height:92px;padding:13px;gap:10px;}
+  .overview-icon{width:42px;height:42px;border-radius:8px;}
+  .overview-icon svg{width:23px;height:23px;}
+  .overview-copy strong{font-size:21px;}
+  .overview-copy span{font-size:12px;}
   .dashboard-side{display:flex;}
   .distribution-heading h3{font-size:21px;}
   .birthday-header{align-items:flex-start;flex-direction:column;}
