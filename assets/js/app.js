@@ -170,22 +170,26 @@ function renderDashboard(c){
       </section>
 
       <aside class="dashboard-side">
-        <section class="birthday-card">
-          <div class="birthday-header">
-            <h3>Birthday</h3>
-            <div class="wish-controls">
-              <input id="birthdayWish" type="text" aria-label="Birthday wish">
-              <button type="button" id="wishBtn">▣&nbsp; Wish</button>
-            </div>
-          </div>
-          <div class="birthday-tabs">
-            <button class="active" data-birthday-tab="students">♧ Students</button>
-            <button data-birthday-tab="staff">▣ Staff</button>
-          </div>
-          <div class="birthday-list" id="birthdayList"></div>
-        </section>
-        <section class="calendar-card" id="dashboardCalendar"></section>
-      </aside>
+  <section class="calendar-card" id="dashboardCalendar"></section>
+
+  <section class="birthday-card">
+    <div class="birthday-header">
+      <h3>Birthday</h3>
+
+      <div class="wish-controls">
+        <input id="birthdayWish" type="text" aria-label="Birthday wish">
+        <button type="button" id="wishBtn">▣&nbsp; Wish</button>
+      </div>
+    </div>
+
+    <div class="birthday-tabs">
+      <button class="active" data-birthday-tab="students">♧ Students</button>
+      <button data-birthday-tab="staff">▣ Staff</button>
+    </div>
+
+    <div class="birthday-list" id="birthdayList"></div>
+  </section>
+</aside>
     </div>`;
 
   drawBarChart(document.getElementById('chartWrap'));
